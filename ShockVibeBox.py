@@ -24,6 +24,9 @@ from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
+# Config imports
+from config import COM_PORT, DEV_MODE, SCREEN_RES
+
 # Other imports
 import numpy as np
 import queue
@@ -37,15 +40,14 @@ from time import sleep
 ################################################################################
 ###### Configuration variables #################################################
 ################################################################################
-""" Future improvement: Break the port variable out into a separate file.
-    The PORT variable will likely have to be changed for every installation.
-    The other COM_CONFIG variables should never be touched by the user.
+""" These should not be edited. User settable configuration values are in the
+    file config.py
 """
 # Set serial com config for installation. For a windows computer you should
 # not need to change any value other than 'PORT'
 COM_CONFIG = { 'SAMPLESIZE': 17,
                'FRAMESIZE': 68,
-               'PORT': 'COM11', #COM11 for desktop, COM3 for notebook
+               'PORT': COM_PORT,
                'BAUDRATE': 115200 }
 
 # This is the time interval in seconds between attempted USB reads. This value
@@ -53,13 +55,6 @@ COM_CONFIG = { 'SAMPLESIZE': 17,
 # Arduino, otherwise the elapsed time clock will get out of sync and the UI
 # will noticeably lag behind the sensor outputs.
 USB_READ_INTERVAL = 0.05
-
-# Set to false for normal use (fullsceen). Set to true when you want the GUI
-# to launch as a floating window (e.g. development on a high resolution screen).
-DEV_MODE = True
-
-# Target screen resolution
-SCREEN_RES = (1366, 768)
 
 DATAFRAME = np.zeros(COM_CONFIG['SAMPLESIZE'], dtype=np.uint32)
 """The DATAFRAME is a 1x<SAMPLESIZE> array of unsigned 32-bit integers.
