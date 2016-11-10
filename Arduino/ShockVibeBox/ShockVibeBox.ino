@@ -28,13 +28,15 @@ unsigned long currentDiscrete;
 int discreteState[8] = {0}; // 0: failing side of HIGH/LOW (time threshold already reached)
                             // 1: passing side of HIGH/LOW
                             // 2: failing side of HIGH/LOW (waiting for time threshold or transition back to passing side)
-unsigned long eventTimer[8] = {0};
+unsigned long eventTimer[12] = {0};
 
 
 // Analog-related variables
 unsigned long currentAnalog;
 int currentPin;
-int analogState[4] = {0}; // 0 = outside threshold window, 1 = inside threshold window
+int analogState[4] = {0}; // 0 = outside threshold window (time threshold already reached)
+                          // 1 = inside threshold window
+                          // 2 = outside threshold window (waiting for time threshold or transition back to passing side)
 int hysteresis = 20; // analog hysteresis value
 
 //      Output array
@@ -168,8 +170,8 @@ void loop() {
       else if(discreteState[i] == 2) {
         if(checkTimeThresh(eventTimer[i])) {
           outputs[i+1]++;
-          discreteState[i] = 0;
           digitalWrite(outputPin, HIGH);
+          discreteState[i] = 0;
         }
         else {
           if(currentDiscrete == LOW) {
@@ -189,30 +191,40 @@ void loop() {
       if(aConfig[i] == 1) { // Channel is analog current
         currentPin = i*2;
       }
-      
       else { // Channel is analog voltage
         currentPin = i*2 + 1;
       }
+      currentAnalog = analogRead(currentPin); // Read value from input pin
       
-      currentAnalog = analogRead(currentPin);
-      if(analogState[i] == 1) { // Last reading was inside threshold window
-        if(currentAnalog > threshHigh[i] || currentAnalog < threshLow[i]) { // Current reading is outside window 
-          outputs[i*2 + 9]++;
-          analogState[i] = 0;
-          digitalWrite(outputPin, HIGH); 
-        }
-      }
-      else { // Last reading was outside threshold window
-        if((currentAnalog > (threshLow[i] + hysteresis)) && currentAnalog < (threshHigh[i] - hysteresis)) { // Current reading is inside window
+      if(analogState[i] == 0) { // Channel is confirmed fail, looking for first reading inside threshold window
+        if((currentAnalog > (threshLow[i] + hysteresis)) && currentAnalog < (threshHigh[i] - hysteresis)) {
           analogState[i] = 1;
         }
       }
-     }
+      else if(analogState[i] == 1) { // Channel is passing, lookign for first reading outside threshold window
+        if(currentAnalog > threshHigh[i] || currentAnalog < threshLow[i]) {
+          eventTimer[i+8] = micros();
+          analogState[i] = 2;
+        }
+      }
+      else if(analogState[i] == 2) { // Channel is outside threshold window, but not yet for the duration required to fail
+        if(checkTimeThresh(eventTimer[i+8])) { // Check time since first out of window reading, if over threshold, flag as fail
+          outputs[i*2 + 9]++;
+          digitalWrite(outputPin, HIGH);
+          analogState[i] = 0;
+        }
+        else { // If time threshold is not yet met, check if reading is inside window. If so, reset state to 1
+          if((currentAnalog > (threshLow[i] + hysteresis)) && currentAnalog < (threshHigh[i] - hysteresis)) {
+            analogState[i] = 1;
+          }
+        }
+      }
+    }
     outputs[(i*2)+10] = currentAnalog; // Store current values (0-1023) for each channel
   }
   
   currentTime = millis();
-  if (currentTime - lastReadTime >= 100) { // Write outputs to serial if
+  if (currentTime - lastReadTime >= 100) { // Write outputs to serial if 100 or more ms elaspsed since last write
     outputs[0] = currentTime;
     Serial.write((byte*)outputs, 68);
     lastReadTime = currentTime;
