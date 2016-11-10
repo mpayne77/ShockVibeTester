@@ -1,0 +1,4 @@
+__pycache__/
+.kivy/
+ENV/
+*.pyc

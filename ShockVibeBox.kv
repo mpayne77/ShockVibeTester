@@ -1,0 +1,338 @@
+<AnalogLabels>:
+    orientation: 'horizontal'
+    size_hint: (1, 0.18)
+    Label:
+        markup: True
+        text: '{:-^15}'.format('Channel')
+        size_hint: (0.5, 1)
+        pos_hint: {'center_x': 0.8}
+    Label:
+        text: '{:-^20}'.format('Status')
+    Label:
+        text: '{:-^25}'.format('Event Counter')
+    Label:
+        #size_hint: (2, 1)
+        text: '{:-^20}'.format('Channel Config')
+
+
+<AnalogLayout>:
+    padding: 5
+    spacing: 5
+    #size_hint: (.6, 1)
+    # pos_hint: {'top': 1}
+
+
+<AnalogMeter>:
+    Widget:
+        id: bgMeter
+        size_hint: 1, 0.5
+        pos: root.x, root.center_y-sp(8)
+        canvas:
+            Color:
+                rgb: 0.5, 0.5, 0.5
+            Rectangle:
+                id: bgRect
+                size: root.width-sp(root.margin*2), sp(16)
+                pos: root.x + sp(root.margin), root.center_y-sp(8)
+    Widget:
+        id: levelMeter
+        canvas:
+            Color:
+                rgb: (0, 1, 0) if (root.level >= root.lowThreshold and root.level <= root.highThreshold) else (1, 0, 0)
+            Rectangle:
+                size: (root.size[0]-2*sp(root.margin))*root.level/1023, sp(16)
+                pos: root.x + sp(root.margin), root.center_y-sp(8)
+    ThresholdMarker:
+        id: markerLow
+        source: 'images/sqr_bkt_l.png'
+        center_x: root.ids.bgMeter.right - root.ids.bgMeter.size[0] + sp(4)
+        center_y: root.center_y
+    ThresholdMarker:
+        id: markerHigh
+        source: 'images/sqr_bkt_r.png'
+        #center_x: root.right - sp(root.margin - 30)
+        center_x: root.ids.bgMeter.x + root.ids.bgMeter.size[0] - sp(4)
+        center_y: root.center_y
+
+
+<ChannelConfigButton>:
+    background_radio_normal: 'images/led-black-circle-th.png'
+    background_radio_down: 'images/led-yellow-circle-th.png'
+    background_radio_disabled_normal: 'images/led-black-circle-th.png'
+    background_radio_disabled_down: 'images/led-black-circle-th.png'
+    allow_no_selection: False
+
+
+<ChannelStripAnalog>:
+    BoxLayout:
+        orientation: 'vertical'
+
+        BoxLayout:
+            orientation: 'horizontal'
+            ToggleButton:
+                text: 'A' + str(root.channelID)
+                bold: True
+                font_size: 40
+                size_hint: (.5, 1)
+                id: channelLabel
+                on_press: root.updateConfig()
+
+            BoxLayout:
+                orientation: 'vertical'
+                BoxLayout:
+                    orientation: 'horizontal'
+                    PassFailCheckBox:
+                        group: 'a_passfail' + str(root.channelID)
+                        background_radio_disabled_down: 'images/led-green.png'
+                        disabled: True if root.ids.channelLabel.state == 'down' else False
+                        state: 'down' if root.eventCounter == 0 else 'normal'
+                    CheckBoxLabel:
+                        text: 'PASS'
+
+                BoxLayout:
+                    orientation: 'horizontal'
+                    PassFailCheckBox:
+                        group: 'a_passfail' + str(root.channelID)
+                        background_radio_disabled_down: 'images/led-red.png'
+                        disabled: True if root.ids.channelLabel.state == 'down' else False
+                        state: 'down' if root.eventCounter >=1 else 'normal'
+                    CheckBoxLabel:
+                        text: 'FAIL'
+
+            EventCounter:
+                text: '{num:04d}'.format(num=root.eventCounter) if root.ids.channelLabel.state == 'down' else '----'
+
+            BoxLayout:
+                orientation: 'vertical'
+                BoxLayout:
+                    orientation: 'horizontal'
+                    ChannelConfigButton:
+                        group: 'a_outputtype' + str(root.channelID)
+                        disabled: False if root.ids.channelLabel.state == 'down' else True
+                        state: 'down'
+                        id: currentButton
+                        on_press: root.updateConfig()
+                    CheckBoxLabel:
+                        text: 'Current'
+                BoxLayout:
+                    orientation: 'horizontal'
+                    ChannelConfigButton:
+                        group: 'a_outputtype' + str(root.channelID)
+                        disabled: False if root.ids.channelLabel.state == 'down' else True
+                        id: voltageButton
+                        on_press: root.updateConfig()
+                    CheckBoxLabel:
+                        text: 'Voltage'
+        BoxLayout:
+            orientation: 'horizontal'
+            Label:
+                font_size: sp(12)
+                #text: 'Low Thresh.' + '\r\n' + 'zero!'
+                text: root.ids.analogMeter.lowThresholdDisp
+            AnalogMeter:
+                id: analogMeter
+                channelID: root.channelID
+                size_hint: 6, 1
+            Label:
+                font_size: sp(12)
+                #text: 'High Thresh.' + '\r\n' + 'over 9000!'
+                text: root.ids.analogMeter.highThresholdDisp
+
+
+
+<ChannelStripDiscrete>:
+    ToggleButton:
+        text: 'D' + str(root.channelID)
+        bold: True
+        font_size: 40
+        size_hint: (.6, 1)
+        id: channelLabel
+        #on_release: root.updateConfig()
+        on_press: root.updateConfig()
+
+    BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+            orientation: 'horizontal'
+            PassFailCheckBox:
+                group: 'd_passfail' + str(root.channelID)
+                background_radio_disabled_down: 'images/led-green.png'
+                disabled: True if root.ids.channelLabel.state == 'down' else False
+                state: 'down' if root.eventCounter == 0 else 'normal'
+            CheckBoxLabel:
+                text: 'PASS'
+
+        BoxLayout:
+            orientation: 'horizontal'
+            PassFailCheckBox:
+                group: 'd_passfail' + str(root.channelID)
+                background_radio_disabled_down: 'images/led-red.png'
+                disabled: True if root.ids.channelLabel.state == 'down' else False
+                state: 'down' if root.eventCounter >=1 else 'normal'
+            CheckBoxLabel:
+                text: 'FAIL'
+
+    EventCounter:
+        text: '{num:04d}'.format(num=root.eventCounter) if root.ids.channelLabel.state == 'down' else '----'
+
+    BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+            orientation: 'horizontal'
+            ChannelConfigButton:
+                group: 'd_edgetype' + str(root.channelID)
+                disabled: False if root.ids.channelLabel.state == 'down' else True
+                state: 'down'
+                id: risingEdgeButton
+                on_press: root.updateConfig()
+            CheckBoxLabel:
+                text: 'Rising'
+        BoxLayout:
+            orientation: 'horizontal'
+            ChannelConfigButton:
+                group: 'd_edgetype' + str(root.channelID)
+                disabled: False if root.ids.channelLabel.state == 'down' else True
+                id: fallingEdgeButton
+                on_press: root.updateConfig()
+            CheckBoxLabel:
+                text: 'Falling'
+
+
+<CheckBoxLabel>:
+    font_size: 18
+    text_size: self.size
+    halign: 'left'
+    valign: 'middle'
+
+
+<ControlsLayout>:
+    size_hint: 0.2, 1
+    padding: 5
+    spacing: 10
+    Button:
+        id: startButton
+        text: 'START'
+        background_normal: ''
+        background_color: 0, 1, 0, 1
+        font_size: sp(32)
+        on_release: root.startTest()
+    Button:
+        id: stopButton
+        text: 'STOP'
+        background_normal: ''
+        background_color: 1, 0, 0, 1
+        font_size: sp(32)
+        disabled: True
+        on_release: root.stopTest()
+    Button:
+        id: exportButton
+        text: 'Export'
+        font_size: sp(32)
+        disabled: True
+    LineSeparator:
+        size_hint: 1, 0.05
+    ElapsedTime:
+        id: elapsedTime
+        size_hint: 1, 0.5
+    LineSeparator:
+        size_hint: 1, 0.05
+    GateThresholdControls:
+        id: gateThreshold
+        size_hint: 1, 0.75
+
+
+<DiscreteLabels>:
+    orientation: 'horizontal'
+    size_hint: (1, 0.35)
+    Label:
+        markup: True
+        text: '{:-^15}'.format('Channel')
+        size_hint: (0.6, 1)
+        pos_hint: {'center_x': 0.8}
+    Label:
+        text: '{:-^20}'.format('Status')
+    Label:
+        text: '{:-^25}'.format('Event Counter')
+    Label:
+        #size_hint: (2, 1)
+        text: '{:-^20}'.format('Channel Config')
+
+
+<DiscreteLayout>:
+    padding: 5
+    spacing: 5
+    #size_hint: (0.7, 1)
+
+
+<ElapsedTime>:
+    orientation: 'vertical'
+    Label:
+        text: 'Elapsed Time'
+        size_hint: 1, 0.25
+    Label:
+        id: clockTimer
+        text: root.timeDisplay
+        font_size: sp(30)
+
+
+<EventCounter>:
+    bcolor: 0.2, 0.2, 0.2, 1
+    size_hint: (1, 0.75)
+    canvas.before:
+        Color:
+            rgba: self.bcolor
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    pos_hint: {'center_y': 0.5}
+    font_size: sp(50)
+
+
+<GateThresholdControls>:
+    orientation: 'vertical'
+    Label:
+        text: 'Detection\r\nThreshold'
+        text_size: self.size
+        valign: 'top'
+        halign: 'center'
+
+        #size_hint: (1, 0.75)
+    Button:
+        text: root.gateThresholdStr
+        font_size: sp(24)
+        background_normal: ''
+        background_color: 0, 0, 0, 0
+        on_press: root.manualEntry()
+    BoxLayout:
+        orientation: 'horizontal'
+        spacing: 5
+        Button:
+            text: '-'
+            font_size: sp(32)
+            on_press: root.decrementThreshold()
+        Button:
+            text: '+'
+            font_size: sp(32)
+            on_press: root.incrementThreshold()
+
+
+<LineSeparator>:
+    canvas:
+        Color:
+            rgba: 1, 1, 1, 0.5
+        Rectangle:
+            pos: root.pos
+            size: root.width, sp(2)
+
+
+<PassFailCheckBox>:
+    background_radio_normal: 'images/led-off.png'
+    background_radio_down: 'images/led-off.png'
+    background_radio_disabled_normal: 'images/led-off.png'
+
+
+<ThresholdMarker>:
+    keep_ratio: False
+    allow_stretch: True
+    size_hint: 0.08, None
+    height: sp(36)
