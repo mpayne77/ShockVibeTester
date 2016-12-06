@@ -25,7 +25,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
 # Config imports
-from config import COM_PORT, DEV_MODE, SCREEN_RES
+from config import COM_PORT, DEV_MODE, SCREEN_RES, TRIGGER_DURATION
 
 # Other imports
 import numpy as np
@@ -316,15 +316,23 @@ class ControlsLayout(BoxLayout):
                                 timeout = 10)
             sleep(0.5)
 
+            # Send discrete channel configs to Arduino
             for strip in app.discreteStrips:
                 self.usb.write(struct.pack('<B', strip.channelConfig))
 
+            # Send analog channel configs to Arduino
             for strip in app.analogStrips:
                 self.usb.write(struct.pack('<B', strip.channelConfig))
                 self.usb.write(struct.pack('<H', strip.ids.analogMeter.lowThreshold))
                 self.usb.write(struct.pack('<H', strip.ids.analogMeter.highThreshold))
 
+            # Send gate threshold time to Arduino
             self.usb.write(struct.pack('<L', self.ids.gateThreshold.gateThresholdMicros))
+
+            # Send trigger duration to Arduino
+            triggerDurationMicros = int(TRIGGER_DURATION*1000)
+            self.usb.write(struct.pack('<L', triggerDurationMicros))
+
 
             self.ids.startButton.disabled = True
             self.ids.stopButton.disabled = False
@@ -332,10 +340,9 @@ class ControlsLayout(BoxLayout):
         except serial.serialutil.SerialException:
             print('\nCOM error.\nSerial connection could not be established.')
             print('Check COM_PORT value in config.py file.\n')
-            #self.serialErrorExit()
             raise SystemExit
 
-        #sleep(1)
+        sleep(0.25)
         self.usb.reset_input_buffer()
         self.q = queue.Queue()
         self.reader = SerialReader(self.q, self.usb)
@@ -357,7 +364,6 @@ class ControlsLayout(BoxLayout):
             self.testRunning = False
         else:
             pass
-
 
 
 class DiscreteLabels(BoxLayout):

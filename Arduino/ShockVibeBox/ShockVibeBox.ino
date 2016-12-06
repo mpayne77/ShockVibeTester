@@ -9,11 +9,13 @@ char aConfig[4]; // 0: off, 1: analog current, 2: analog voltage
 int threshHigh[4] = {0}; // Analog high threshold value (0-1023)
 int threshLow[4] = {0}; // Analog low threshold value (0-1023)
 unsigned long threshTime; // Time threshold for discrete level crossing detection (microseconds)
+unsigned long triggerDuration; // Duration of 3.3V output when event is logged (microseconds)
 
 // Temp variables to convert incoming serial bytes to integers
 char configRead[1];
 char thresholdRead[2];
 char threshTimeRead[4];
+char triggerDurationRead[4];
 
 // Time-related variables
 unsigned long currentTime;
@@ -22,13 +24,17 @@ unsigned long serialUpdateInterval = 100; // Time in milliseconds between serial
                                           // This must be longer than the interval between serial queue reads on the PC side
                                           // otherwise the GUI may lag behind the Arduino. Using 2x (i.e. write to Arduino buffer
                                           // every 100ms, read from serial queue on PC every 50ms) seems to be working well.
+unsigned long eventTimer[12] = {0};
+unsigned long triggerTimer = 0;
+int triggerState = 0; // 0: trigger is off
+                      // 1: trigger is on
 
 // Discrete-related variables
 unsigned long currentDiscrete;
 int discreteState[8] = {0}; // 0: failing side of HIGH/LOW (time threshold already reached)
                             // 1: passing side of HIGH/LOW
                             // 2: failing side of HIGH/LOW (waiting for time threshold or transition back to passing side)
-unsigned long eventTimer[12] = {0};
+
 
 
 // Analog-related variables
@@ -71,14 +77,14 @@ void setup() {
   // Wait for incoming serial data from PC
   while(Serial.available() == 0);
 
-  // Read incoming serial discrete config data
+  // Read incoming serial discrete config value
   for(int i = 0; i < 8; i++) {
     Serial.readBytes(configRead, 1);
     dConfig[i] = configRead[0];
     char configRead[1] = {0};
   }
 
-  // Read incoming serial analog config data
+  // Read incoming serial analog config value
   for (int i = 0; i < 4; i++) {
     Serial.readBytes(configRead, 1); // Current or voltage
     aConfig[i] = configRead[0];
@@ -90,11 +96,17 @@ void setup() {
     threshHigh[i] = threshHigh[i] + (thresholdRead[1] << 8);
   }
 
-  // Read incoming serial time threshold data
+  // Read incoming serial time threshold value
   Serial.readBytes(threshTimeRead, 4);
   for (int i = 0; i<4; i++) {
     threshTime += threshTimeRead[i] << i*8;
-  } 
+  }
+
+  // Read incoming trigger duration value
+  Serial.readBytes(triggerDurationRead, 4);
+  for (int i = 0; i<4; i++) {
+    triggerDuration += triggerDurationRead[i] << i*8;
+  }
 
   // Initial analog pin read
   lastReadTime = millis();
@@ -142,10 +154,10 @@ void loop() {
         }
       }
       else if(discreteState[i] == 2) {
-        if(checkTimeThresh(eventTimer[i])) {
+        if(checkTimeThresh(eventTimer[i], threshTime)) {
           outputs[i+1]++;
           discreteState[i] = 0;
-          digitalWrite(outputPin, HIGH);
+          activateTrigger();
         }
         else {
           if(currentDiscrete == HIGH) {
@@ -168,10 +180,10 @@ void loop() {
         }
       }
       else if(discreteState[i] == 2) {
-        if(checkTimeThresh(eventTimer[i])) {
+        if(checkTimeThresh(eventTimer[i], threshTime)) {
           outputs[i+1]++;
-          digitalWrite(outputPin, HIGH);
           discreteState[i] = 0;
+          activateTrigger();
         }
         else {
           if(currentDiscrete == LOW) {
@@ -208,10 +220,10 @@ void loop() {
         }
       }
       else if(analogState[i] == 2) { // Channel is outside threshold window, but not yet for the duration required to fail
-        if(checkTimeThresh(eventTimer[i+8])) { // Check time since first out of window reading, if over threshold, flag as fail
+        if(checkTimeThresh(eventTimer[i+8], threshTime)) { // Check time since first out of window reading, if over threshold, flag as fail
           outputs[i*2 + 9]++;
-          digitalWrite(outputPin, HIGH);
           analogState[i] = 0;
+          activateTrigger();
         }
         else { // If time threshold is not yet met, check if reading is inside window. If so, reset state to 1
           if((currentAnalog > (threshLow[i] + hysteresis)) && currentAnalog < (threshHigh[i] - hysteresis)) {
@@ -221,6 +233,14 @@ void loop() {
       }
     }
     outputs[(i*2)+10] = currentAnalog; // Store current values (0-1023) for each channel
+  }
+
+  // if trigger output is on, check time and turn off if trigger duration is exceeded
+  if (triggerState == 1) {
+    if(checkTimeThresh(triggerTimer, triggerDuration)) {
+      digitalWrite(outputPin, LOW);
+      triggerState = 0;
+    }
   }
   
   currentTime = millis();
@@ -235,10 +255,10 @@ void loop() {
 // This function checks if an event duration has surpassed the threshold time, returns true or false
 // This solves the problem of the micros() function rolling over after 4294967295 microseconds,
 // or 01:11:34.967 in HH:MM:SS
-boolean checkTimeThresh(unsigned long eventTime) {
-  unsigned long timeToRollover = 4294967295 - eventTime; // microseconds until next rollover
-  if(timeToRollover >= threshTime) { // threshold time would be reached prior to rollover
-    if(micros() - eventTime >= threshTime) {
+boolean checkTimeThresh(unsigned long eventStart, unsigned long eventDuration) {
+  unsigned long timeToRollover = 4294967295 - eventStart; // microseconds until next rollover
+  if(timeToRollover >= eventDuration) { // threshold time would be reached prior to rollover
+    if(micros() - eventStart >= eventDuration) {
       return true;
     }
     else {
@@ -246,13 +266,20 @@ boolean checkTimeThresh(unsigned long eventTime) {
     }
   }
    else { // rollover prior to threshold time
-    if(micros() + timeToRollover >= threshTime) {
+    if(micros() + timeToRollover >= eventDuration) {
       return true;
     }
     else {
       return false;
     }
   }   
+}
+
+// This function activates the 3.3V external trigger
+void activateTrigger() {
+  digitalWrite(outputPin, HIGH);
+  triggerState = 1;
+  triggerTimer = micros();
 }
 
 
