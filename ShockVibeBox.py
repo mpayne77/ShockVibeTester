@@ -197,17 +197,17 @@ class ChannelStripAnalog(BoxLayout):
         if app.controlsLayout.testRunning == False:
             self.ids.analogMeter.updateLabels()
             if self.ids.channelLabel.state == 'normal':
-                print('Channel A{} is off'.format(str(self.channelID)))
+                #print('Channel A{} is off'.format(str(self.channelID)))
                 self.channelConfig = 0
             elif self.ids.currentButton.state == 'down':
-                print('Channel A{} is analog current, low threshold {}, high threshold {}'.format(
-                str(self.channelID), str(self.ids.analogMeter.lowThreshold),
-                str(self.ids.analogMeter.highThreshold)))
+                #print('Channel A{} is analog current, low threshold {}, high threshold {}'.format(
+                #str(self.channelID), str(self.ids.analogMeter.lowThreshold),
+                #str(self.ids.analogMeter.highThreshold)))
                 self.channelConfig = 1
             else:
-                print('Channel A{} is analog voltage, low threshold {}, high threshold {}'.format(
-                str(self.channelID), str(self.ids.analogMeter.lowThreshold),
-                str(self.ids.analogMeter.highThreshold)))
+                #print('Channel A{} is analog voltage, low threshold {}, high threshold {}'.format(
+                #str(self.channelID), str(self.ids.analogMeter.lowThreshold),
+                #str(self.ids.analogMeter.highThreshold)))
                 self.channelConfig = 2
 
         # If test is running. Immediately return GUI to state in accordance with
@@ -250,14 +250,14 @@ class ChannelStripDiscrete(BoxLayout):
         # GUI state
         if app.controlsLayout.testRunning == False:
             if self.ids.channelLabel.state == 'normal':
-                print('Channel D{} is off'.format(str(self.channelID)))
+                #print('Channel D{} is off'.format(str(self.channelID)))
                 self.channelConfig = 0
             else:
                 if self.ids.risingEdgeButton.state == 'down':
-                    print('Channel D{} is PNP/NPN rising edge'.format(str(self.channelID)))
+                    #print('Channel D{} is PNP/NPN rising edge'.format(str(self.channelID)))
                     self.channelConfig = 1
                 else:
-                    print('Channel D{} is PNP/NPN falling edge'.format(str(self.channelID)))
+                    #print('Channel D{} is PNP/NPN falling edge'.format(str(self.channelID)))
                     self.channelConfig = 2
 
         # If test is running. Immediately return GUI to state in accordance with
@@ -330,7 +330,9 @@ class ControlsLayout(BoxLayout):
             self.ids.stopButton.disabled = False
 
         except serial.serialutil.SerialException:
-            print('Serial connection could not be established. Program exiting.')
+            print('\nCOM error.\nSerial connection could not be established.')
+            print('Check COM_PORT value in config.py file.\n')
+            #self.serialErrorExit()
             raise SystemExit
 
         #sleep(1)
@@ -355,6 +357,7 @@ class ControlsLayout(BoxLayout):
             self.testRunning = False
         else:
             pass
+
 
 
 class DiscreteLabels(BoxLayout):
@@ -430,7 +433,7 @@ class GateThresholdControls(BoxLayout):
             return None
 
         popup = Popup(title = 'Enter detection threshold time in ms',
-        content=TextInput(multiline=False), size=(500, 100), size_hint=(None, None))
+                      content=TextInput(multiline=False), size=(500, 100), size_hint=(None, None))
         popup.bind(on_dismiss=self.setThreshold)
         popup.open()
 
