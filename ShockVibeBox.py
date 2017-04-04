@@ -450,7 +450,7 @@ class GateThresholdControls(BoxLayout):
             return None
 
         self.gateThresholdMicros = int(self.gateThresholdMillis*1000)
-        self.gateThresholdStr = '{:0.2f} ms'.format(self.gateThresholdMillis)
+        self.gateThresholdStr = '{:0.3f} ms'.format(self.gateThresholdMillis)
 
 
 class LineSeparator(Widget):
