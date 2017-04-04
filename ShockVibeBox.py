@@ -402,7 +402,7 @@ class GateThresholdControls(BoxLayout):
     gateThresholdMicros = NumericProperty(1000)
 
     # Gate treshold for GUI display
-    gateThresholdStr = StringProperty('1.00 ms')
+    gateThresholdStr = StringProperty('1.000 ms')
 
     def decrementThreshold(self):
         """Increments gate threshold.
@@ -419,7 +419,7 @@ class GateThresholdControls(BoxLayout):
 
         if self.gateThresholdMillis >= 0.25:
             self.gateThresholdMillis -= 0.25
-            self.gateThresholdStr = '{:0.2f} ms'.format(self.gateThresholdMillis)
+            self.gateThresholdStr = '{:0.3f} ms'.format(self.gateThresholdMillis)
             self.gateThresholdMicros = int(self.gateThresholdMillis*1000)
 
     def incrementThreshold(self):
@@ -429,7 +429,7 @@ class GateThresholdControls(BoxLayout):
             return None
 
         self.gateThresholdMillis += 0.25
-        self.gateThresholdStr = '{:0.2f} ms'.format(self.gateThresholdMillis)
+        self.gateThresholdStr = '{:0.3f} ms'.format(self.gateThresholdMillis)
         self.gateThresholdMicros = int(self.gateThresholdMillis*1000)
 
     def manualEntry(self):
